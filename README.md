@@ -6,9 +6,9 @@ TypeScript giúp kiểm tra kiểu dữ liệu API và sự kiện realtime khi 
 
 ## Trạng thái
 
-Dự án đang triển khai. Domain giám sát, cảnh báo và cấu hình từ xa đã có mã nguồn và test; frontend, API và entry point tiếp tục tích hợp. Các lệnh chạy dưới đây là quy trình mục tiêu; cần có `run.py`, `frontend/package.json` và lockfile tương ứng trước khi chạy. Không coi README này là biên bản nghiệm thu tính năng hoặc xác nhận kết nối thiết bị thật.
+Đã tích hợp domain, service, REST API, Socket.IO và frontend React. Kiểm thử local (22/11/2026): 130 test Python pass, typecheck + build + 5 test frontend pass; đã chạy app thật bằng trình duyệt headless qua các luồng đăng nhập (sai/đúng), thêm thiết bị (IP sai bị chặn, IP đúng tạo sensor mặc định), dashboard realtime, chi tiết thiết bị, mọi trang menu, và quyền viewer (ẩn nút sửa, `DELETE` trả 403). Chưa kiểm thử với lab ảo thật (SSH/Telnet/SNMP tới VyOS/MikroTik) và chưa build Docker image (Docker daemon không chạy lúc kiểm thử).
 
-Phạm vi Must/Should trong `NetMon – PRD & SRS.md` là **kế hoạch/đang triển khai**, chưa xác minh end-to-end: xác thực và phân quyền, kiểm kê và nhóm thiết bị, sensor và scheduler, cảnh báo và realtime, báo cáo, discovery, cấu hình từ xa, audit và thiết lập. Xem spec để biết mức ưu tiên từng chức năng; không suy diễn rằng mọi chức năng đã được hỗ trợ đầy đủ.
+Phạm vi Must/Should trong `NetMon – PRD & SRS.md` đã có mã và test tự động; phần cần lab thật vẫn chưa xác minh end-to-end: xác thực và phân quyền, kiểm kê và nhóm thiết bị, sensor và scheduler, cảnh báo và realtime, báo cáo, discovery, cấu hình từ xa, audit và thiết lập. Xem spec để biết mức ưu tiên từng chức năng; không suy diễn rằng mọi chức năng đã được hỗ trợ đầy đủ.
 
 ## Yêu cầu
 
@@ -46,7 +46,7 @@ Các giá trị trong ngoặc nhọn là chỗ cần thay, không phải thông 
 
 Giữ `SECRET_KEY` và `FERNET_KEY` ổn định qua restart/deploy. Khóa session thay đổi sẽ làm mất phiên đăng nhập; mất khóa Fernet sẽ không giải mã được mật khẩu thiết bị đã lưu. Không dựa vào khóa tự sinh hoặc tài khoản mặc định trong cấu hình phát triển. `ADMIN_PASSWORD` chỉ khởi tạo tài khoản khi DB trống; thay biến môi trường không tự đổi mật khẩu tài khoản đã tồn tại.
 
-Khi frontend và entry point đã được tích hợp:
+Build và chạy:
 
 ```powershell
 npm --prefix frontend ci
@@ -55,7 +55,7 @@ npm --prefix frontend run build
 .venv\Scripts\python run.py
 ```
 
-`run.py` là entry point đang chờ hoàn thiện; hợp đồng yêu cầu expose Flask `app`, gắn Socket.IO và khởi động scheduler đúng một lần. Backend local dùng cổng 5000; mở địa chỉ server in trong terminal.
+`run.py` expose Flask `app` (Gunicorn dùng trên Railway) và chạy Socket.IO server ở cổng `PORT` (mặc định 5000). `SECRET_KEY` và `FERNET_KEY` là bắt buộc; thiếu sẽ báo lỗi ngay khi khởi động.
 
 ### Phát triển frontend
 
@@ -65,7 +65,7 @@ Chạy Flask tại cổng **5000** trong một terminal và Vite trong terminal 
 npm --prefix frontend run dev
 ```
 
-Dùng địa chỉ Vite in trong terminal. Cấu hình Vite cần proxy request API và `/socket.io` tới `http://127.0.0.1:5000`, bật WebSocket cho Socket.IO; giữ session cookie và CSRF theo hợp đồng API. Đây là luồng phát triển dự kiến, không phải xác nhận proxy đã được nghiệm thu. Build production không cần chạy Vite dev server.
+Dùng địa chỉ Vite in trong terminal. Cấu hình Vite cần proxy request API và `/socket.io` tới `http://127.0.0.1:5000`, bật WebSocket cho Socket.IO; giữ session cookie và CSRF theo hợp đồng API. Build production không cần chạy Vite dev server.
 
 ## Kiểm thử local, không CI
 
@@ -81,7 +81,7 @@ Nếu Docker daemon đang chạy:
 docker build -t netmon:local .
 ```
 
-Chỉ ghi nhận bước đã thực sự chạy thành công; kết quả cuối và số lượng test sẽ cập nhật sau tích hợp. Test mock và fake không chứng minh mạng lab hoặc thiết bị thật hoạt động. Repository không yêu cầu tạo pipeline CI.
+Test mock và fake không chứng minh mạng lab hoặc thiết bị thật hoạt động. Repository không yêu cầu tạo pipeline CI.
 
 ## Lab thật và chế độ fake
 
