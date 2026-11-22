@@ -7,3 +7,6 @@ __pycache__/
 htmlcov/
 .pytest_cache/
 instance/
+.claude/
+node_modules/
+frontend/dist/
