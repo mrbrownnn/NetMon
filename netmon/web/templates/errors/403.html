@@ -1,9 +1,0 @@
-{% extends "base.html" %}
-{% from "components/panel.html" import panel %}
-{% block title %}Không có quyền truy cập{% endblock %}
-{% block content %}
-{% call panel('403 – Không có quyền') %}
-<p class="mb-2">Tài khoản của bạn không có quyền thực hiện thao tác hoặc xem trang này.</p>
-<a class="btn btn-secondary" href="/">Về Trang chủ</a>
-{% endcall %}
-{% endblock %}
