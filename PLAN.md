@@ -81,3 +81,10 @@ Lỗi quyền xử lý ở tầng web. `NetMonService.create(db_url, fernet_key,
 | R review + tích hợp + chạy TC | opus | tất cả |
 
 Đợt 1 chạy song song T1, T2, T4-tĩnh (css/templates/macros). Đợt 2: T3. Đợt 3: T4 nối route. Đợt 4: Opus review.
+
+## Deploy (Railway) & test
+- Không có CI: mọi agent chạy test local `.venv/Scripts/python -m pytest -q` trước khi báo xong.
+- `run.py` phải expose `app` (Flask app đã gắn SocketIO, scheduler start lúc tạo app, 1 lần) và `if __name__ == "__main__": socketio.run(app)`.
+- Route `GET /healthz` -> 200 `{"ok": true}`, không cần login.
+- Env: `SECRET_KEY`, `FERNET_KEY` (nếu thiếu: dev tự sinh + cảnh báo log), `DATABASE_URL` (mặc định `sqlite:///netmon.db`), `ADMIN_USERNAME`/`ADMIN_PASSWORD` (seed admin khi DB rỗng), `PORT`.
+- Gunicorn 1 worker nhiều thread (scheduler singleton trong process). SocketIO `async_mode="threading"`.
