@@ -88,3 +88,11 @@ Lỗi quyền xử lý ở tầng web. `NetMonService.create(db_url, fernet_key,
 - Route `GET /healthz` -> 200 `{"ok": true}`, không cần login.
 - Env: `SECRET_KEY`, `FERNET_KEY` (nếu thiếu: dev tự sinh + cảnh báo log), `DATABASE_URL` (mặc định `sqlite:///netmon.db`), `ADMIN_USERNAME`/`ADMIN_PASSWORD` (seed admin khi DB rỗng), `PORT`.
 - Gunicorn 1 worker nhiều thread (scheduler singleton trong process). SocketIO `async_mode="threading"`.
+
+## Thay đổi được yêu cầu ngày 22/11/2026 (ưu tiên hơn lựa chọn UI cũ)
+- Frontend: **React + TypeScript + Vite**, Bootstrap 5; giữ design tokens và bố cục UI-DESIGN.md. Jinja/vanilla JS ở đợt đầu là phần cũ, không dùng cho SPA mới.
+- Backend: Flask REST API + session/CSRF + Socket.IO; phục vụ `frontend/dist` sau build. Vite dev proxy tới Flask khi phát triển local.
+- Railway Docker build nhiều stage: Node build React, Python chạy backend + phục vụ assets. Một service, một replica, SQLite volume `/data`.
+- Railway bắt buộc khai báo khóa session/Fernet ổn định và mật khẩu admin riêng; không dùng mật khẩu mặc định. Dev cần lưu khóa tự sinh trong thư mục ignored để restart không mất khả năng giải mã.
+- Test local: pytest cho Python, TypeScript typecheck + Vite build cho FE; Docker build nếu Docker daemon sẵn sàng. Không tạo CI.
+- Git author chỉ `mrbrownnn`; không thêm attribution/tag agent. Commit/push sau từng task đã kiểm tra.
