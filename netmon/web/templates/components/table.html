@@ -1,0 +1,23 @@
+{#- Pagination under a .nm-table. url_for_page: callable(page:int) -> str.
+    Renders: ‹ 1 2 3 … 9 ›  +  "Hiển thị 1–20 / 173" -#}
+{%- macro pagination(page, pages, total, per_page, url_for_page) -%}
+{%- set page = page | int -%}
+{%- set pages = [pages | int, 1] | max -%}
+<div class="nm-pager">
+  {%- if page > 1 %}<a href="{{ url_for_page(page - 1) }}" aria-label="Trang trước">‹</a>
+  {%- else %}<span class="pg disabled">‹</span>{% endif %}
+  {%- set ns = namespace(last=0) %}
+  {%- for p in range(1, pages + 1) if p == 1 or p == pages or (p - page) | abs <= 2 %}
+    {%- if p - ns.last > 1 %}<span class="pg gap">…</span>{% endif %}
+    {%- if p == page %}<span class="pg current" aria-current="page">{{ p }}</span>
+    {%- else %}<a href="{{ url_for_page(p) }}">{{ p }}</a>{% endif %}
+    {%- set ns.last = p %}
+  {%- endfor %}
+  {%- if page < pages %}<a href="{{ url_for_page(page + 1) }}" aria-label="Trang sau">›</a>
+  {%- else %}<span class="pg disabled">›</span>{% endif %}
+  <span class="info">
+    {%- if total %}Hiển thị {{ (page - 1) * per_page + 1 }}–{{ [page * per_page, total] | min }} / {{ total }}
+    {%- else %}Không có dữ liệu{% endif -%}
+  </span>
+</div>
+{%- endmacro %}

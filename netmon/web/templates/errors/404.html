@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% from "components/panel.html" import panel %}
+{% block title %}Không tìm thấy trang{% endblock %}
+{% block content %}
+{% call panel('404 – Không tìm thấy') %}
+<p class="mb-2">Trang hoặc đối tượng bạn yêu cầu không tồn tại hoặc đã bị xóa.</p>
+<a class="btn btn-secondary" href="/">Về Trang chủ</a>
+{% endcall %}
+{% endblock %}

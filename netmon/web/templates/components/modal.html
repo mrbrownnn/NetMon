@@ -1,0 +1,24 @@
+{#- Confirm dialog 420px. JS: NM.confirm({...}) reuses #nm-confirm (rendered once per page),
+    or open this one by id: NM.confirmModal(id, {preview: ['cmd1','cmd2']}) -> Promise<bool>.
+    body / extra caller content is rendered inside .modal-body; preview box is .nm-preview (filled by JS). -#}
+{%- macro confirm_modal(id, title, body, action_label='Xác nhận', danger=False, preview=True) -%}
+<div class="modal" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}-title" aria-hidden="true" data-nm-confirm>
+  <div class="modal-dialog nm-modal-confirm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="{{ id }}-title" data-field="title">{{ title }}</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0" data-field="body">{{ body }}</p>
+        {%- if caller %}{{ caller() }}{% endif %}
+        {%- if preview %}<pre class="nm-preview" data-field="preview" hidden></pre>{% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn {{ 'btn-danger' if danger else 'btn-primary' }}" data-action="confirm">{{ action_label }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+{%- endmacro %}

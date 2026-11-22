@@ -1,0 +1,18 @@
+{#- Usage:
+    {% call panel('Cảnh báo đang mở', actions='<a href="/alerts">Xem tất cả ›</a>', flush=True) %} ... {% endcall %}
+    actions: HTML string (trusted, rendered |safe). flush: body without padding (for tables). -#}
+{%- macro panel(title, actions=None, flush=False, id=None, cls='') -%}
+<section class="nm-panel {{ cls }}"{% if id %} id="{{ id }}"{% endif %}>
+  {%- if title or actions %}
+  <div class="nm-panel-head">
+    <span>{{ title }}</span>
+    {%- if actions %}<div class="nm-panel-actions">{{ actions | safe }}</div>{% endif %}
+  </div>
+  {%- endif %}
+  <div class="nm-panel-body{% if flush %} flush{% endif %}">{{ caller() if caller else '' }}</div>
+</section>
+{%- endmacro %}
+
+{%- macro empty_state(text, actions=None) -%}
+<div class="nm-empty">{{ text }}{% if actions %} {{ actions | safe }}{% endif %}</div>
+{%- endmacro %}
