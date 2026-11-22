@@ -1,0 +1,8 @@
+{
+  "name": "netmon-railway-iac",
+  "private": true,
+  "description": "Only for .railway/railway.ts (Railway IaC). Frontend lives in frontend/.",
+  "devDependencies": {
+    "railway": "3.17.0"
+  }
+}
