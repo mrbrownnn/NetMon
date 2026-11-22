@@ -186,8 +186,9 @@ class CiscoIOSDriver(DeviceDriver):
                 if s.startswith("description "):
                     cur["description"] = s[12:]
                 elif s.startswith("ip address "):
-                    a, m = s.split()[2:4]
-                    cur["ip"] = ipaddress.ip_interface(f"{a}/{m}").with_prefixlen
+                    tokens = s.split()
+                    if len(tokens) == 4:
+                        cur["ip"] = ipaddress.ip_interface(f"{tokens[2]}/{tokens[3]}").with_prefixlen
                 elif s == "shutdown":
                     cur["status"] = "down"
             else:

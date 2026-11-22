@@ -4,6 +4,7 @@ from __future__ import annotations
 import ipaddress
 import itertools
 import re
+import shlex
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Any, ClassVar
@@ -27,6 +28,19 @@ def check_output(output: str) -> str:
         raise CommandError(output)
     return output
 
+
+def _check_config_output(output: str, commands: list[str]) -> str:
+    # Ignore exact command echoes and prompt-only lines, not device error lines.
+    lines = []
+    for line in (output or "").splitlines():
+        text = line.strip()
+        if text in commands or any(text.endswith(prompt + cmd) for cmd in commands for prompt in ("#", "# ", ">", "> ", "$", "$ ")):
+            continue
+        if re.fullmatch(r"\S+[#$>]", text):
+            continue
+        lines.append(line)
+    check_output("\n".join(lines))
+    return output
 
 class ConfigCommand(ABC):
     command_type: ClassVar[str]
@@ -55,7 +69,8 @@ class ConfigCommand(ABC):
 
     def execute(self, conn: Connection) -> str:
         undo = self._capture(conn)
-        self.output = check_output(conn.send_config(self.preview()))
+        commands = self.preview()
+        self.output = _check_config_output(conn.send_config(commands), commands)
         self._undo, self.executed_at = undo, datetime.now(timezone.utc)
         return self.output
 
@@ -120,6 +135,21 @@ class SetInterfaceIP(ConfigCommand):
     def _capture(self, conn: Connection) -> list[str]:
         old = self._iface(conn, self.iface)["ip"]
         d = self.driver
+        if d.name == "vyos":
+            addresses = []
+            for line in d.get_running_config(conn).splitlines():
+                tokens = shlex.split(line)
+                if tokens[:5] == ["set", "interfaces", "ethernet", self.iface, "address"]:
+                    addresses.extend(tokens[5:])
+        elif d.name == "mikrotik":
+            from .drivers import _kv
+            addresses = [row.get("address", "") for line in conn.send_command("/ip address print terse").splitlines()
+                         if (row := _kv(line)).get("interface") == self.iface]
+        else:
+            addresses = []
+        # ponytail: single-address model; reject multi-address writes until undo stores every address.
+        if len(addresses) > 1:
+            raise ValueError("Cannot change IP on an interface with multiple addresses; no commands sent")
         return d.cmd_set_interface_ip(self.iface, old) if old else d.cmd_remove_interface_ip(self.iface)
 
 
@@ -180,7 +210,8 @@ class CommandHistory:
             raise ValueError("Còn thao tác mới hơn chưa hoàn tác — hãy hoàn tác theo thứ tự ngược")
         cmd = self.latest_undoable()
         assert cmd is not None
-        out = check_output(conn.send_config(cmd.undo_commands()))
+        commands = cmd.undo_commands()
+        out = _check_config_output(conn.send_config(commands), commands)
         cmd.undone = True
         return out
 

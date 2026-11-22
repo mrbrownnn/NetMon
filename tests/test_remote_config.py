@@ -144,7 +144,7 @@ class _FakeNetmiko:
     def send_command(self, cmd):
         return f"out:{cmd}"
 
-    def send_config_set(self, cmds):
+    def send_config_set(self, cmds, **kwargs):
         return "\n".join(cmds)
 
     def disconnect(self):
@@ -155,10 +155,10 @@ def test_ssh_connection_wraps_netmiko(monkeypatch):
     import netmiko
     made = []
     monkeypatch.setattr(netmiko, "ConnectHandler", lambda **kw: made.append(_FakeNetmiko(**kw)) or made[-1])
-    with TelnetConnection("h", 23, "u", "p", "vyos") as c:
+    with TelnetConnection("h", 23, "u", "p", "cisco_ios") as c:
         assert c.send_command("show x") == "out:show x"
         assert c.send_config(["a", "b"]) == "a\nb"
-    assert made[0].kw["device_type"] == "vyos_telnet" and made[0].closed
+    assert made[0].kw["device_type"] == "cisco_ios_telnet" and made[0].closed
 
 
 @pytest.mark.parametrize("exc,kind", [

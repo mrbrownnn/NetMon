@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -77,7 +78,7 @@ class Sensor(ABC):
     @timeout.setter
     def timeout(self, value: float) -> None:
         value = float(value)
-        if value <= 0:
+        if not math.isfinite(value) or value <= 0:
             raise ValueError("timeout must be > 0")
         self._timeout = value
 
@@ -87,7 +88,7 @@ class Sensor(ABC):
 
     @warning_threshold.setter
     def warning_threshold(self, value: float | None) -> None:
-        if value is not None and float(value) < 0:
+        if value is not None and (not math.isfinite(float(value)) or float(value) < 0):
             raise ValueError("warning_threshold must be >= 0")
         self._warning_threshold = None if value is None else float(value)
 
@@ -152,7 +153,10 @@ class Sensor(ABC):
 
     def resume(self) -> None:
         with self._lock:
+            if not self._paused:
+                return
             self._paused = False
+            self._failures = 0
             self._update_status(CheckResult(Status.UNKNOWN, None, "Resumed"))
 
     # ---- template method ----
@@ -169,8 +173,8 @@ class Sensor(ABC):
             result = self._count_failures(self._apply_threshold(result))
             self._last_result = result
             self._update_status(result)
-        self._notify("on_result", result)
-        return result
+            self._notify("on_result", result)
+            return result
 
     @abstractmethod
     def check(self) -> CheckResult: ...

@@ -163,7 +163,7 @@ class AlertManager:
         self.repository = repository if repository is not None else InMemoryRepository()
         self.notifiers: list[Notifier] = notifiers or []
         self.on_change = on_change  # (event "alert_opened"|"alert_updated", alert)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def on_result(self, sensor: Any, result: CheckResult) -> None:
         pass
@@ -172,10 +172,11 @@ class AlertManager:
         new = result.status
         if new not in LEVEL_FOR_STATUS:  # PAUSED / UNKNOWN never alert (FR-36)
             return
-        if new == Status.UP and old in (Status.UNKNOWN, Status.PAUSED):
-            return  # startup / resume to UP is not a recovery
         with self._lock:
-            for a in self.open_alerts(sensor.id):  # superseded or recovered
+            opened = self.open_alerts(sensor.id)
+            if new == old or (new == Status.UP and old in (Status.UNKNOWN, Status.PAUSED) and not opened):
+                return  # startup / resume without an outstanding alert is not recovery
+            for a in opened:  # superseded or recovered
                 a.resolve()
                 self.repository.update(a)
                 self._emit("alert_updated", a)
@@ -192,13 +193,14 @@ class AlertManager:
                 and (sensor_id is None or a.sensor_id == sensor_id)]
 
     def acknowledge(self, alert_id: int, user: str, note: str = "") -> Alert:
-        alert = self.repository.get(alert_id)
-        if alert is None:
-            raise KeyError(alert_id)
-        alert.ack(user, note)
-        self.repository.update(alert)
-        self._emit("alert_updated", alert)
-        return alert
+        with self._lock:
+            alert = self.repository.get(alert_id)
+            if alert is None:
+                raise KeyError(alert_id)
+            alert.ack(user, note)
+            self.repository.update(alert)
+            self._emit("alert_updated", alert)
+            return alert
 
     def dispatch(self, alert: Alert) -> dict[str, str]:
         """Send to every enabled notifier; a failing channel is logged and skipped (FR-43)."""

@@ -13,13 +13,13 @@ LOSS_WARNING_PCT = 20.0
 # regardless of console code page.
 _LINUX_RTT = re.compile(r"=\s*[\d.]+/([\d.]+)/")              # rtt min/avg/max/mdev = a/b/c/d ms
 _WIN_RTT = re.compile(r"[=<]\s*(\d+(?:\.\d+)?)\s*ms", re.I)    # last match = Average / Trung binh
-_LOSS = re.compile(r"(\d+(?:\.\d+)?)\s*%")
+_LOSS = re.compile(r"(\d+(?:[.,]\d+)?)\s*%(?!\d)")
 
 
 def parse_ping_output(text: str) -> tuple[float | None, float | None]:
     """Return (avg_rtt_ms, loss_pct); None when not found."""
     loss_m = _LOSS.search(text)
-    loss = float(loss_m.group(1)) if loss_m else None
+    loss = float(loss_m.group(1).replace(",", ".")) if loss_m else None
     m = _LINUX_RTT.search(text)
     if m:
         return float(m.group(1)), loss

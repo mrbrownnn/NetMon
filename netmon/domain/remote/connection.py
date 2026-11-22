@@ -56,7 +56,7 @@ def _map_exception(e: Exception) -> ConnectionError_:
         return ConnectionError_("auth")
     if isinstance(e, ConnectionRefusedError):
         return ConnectionError_("refused")
-    if isinstance(e, (netmiko.NetmikoTimeoutException, socket.timeout, TimeoutError)):
+    if isinstance(e, (netmiko.NetmikoTimeoutException, netmiko.ReadTimeout, socket.timeout, TimeoutError)):
         msg = str(e).lower()
         return ConnectionError_("refused" if "refused" in msg else "timeout")
     return ConnectionError_("other", f"{MESSAGES['other']}: {e}")
@@ -84,6 +84,8 @@ class SSHConnection(Connection):
         if self._conn is None:
             self.connect()
         try:
+            if fn == "send_config_set" and self.driver.name == "vyos":
+                return self._conn.send_config_set(arg, exit_config_mode=True)
             return getattr(self._conn, fn)(arg)
         except Exception as e:
             raise _map_exception(e) from e
@@ -104,6 +106,13 @@ class SSHConnection(Connection):
 
 class TelnetConnection(SSHConnection):
     suffix = "_telnet"
+
+    def connect(self) -> None:
+        from netmiko.ssh_dispatcher import CLASS_MAPPER
+        device_type = self.driver.netmiko_type + self.suffix
+        if device_type not in CLASS_MAPPER:
+            raise ConnectionError_("other", f"Telnet unsupported for driver {self.driver.name}; use SSH")
+        super().connect()
 
 
 class FakeConnection(Connection):

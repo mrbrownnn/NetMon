@@ -26,20 +26,22 @@ class MonitorScheduler:
             return cls._instance
 
     def __init__(self, max_workers: int = 16, clock: Callable[[], float] = time.monotonic) -> None:
-        if self._initialized:
-            return
-        self._initialized = True
-        self._max_workers = max_workers
-        self._clock = clock
-        self._sensors: dict[int, Sensor] = {}
-        self._due: dict[int, float] = {}
-        self._heap: list[tuple[float, int]] = []
-        self._inflight: set[int] = set()
-        self._lock = threading.Lock()
-        self._wake = threading.Event()
-        self._stop = threading.Event()
-        self._thread: threading.Thread | None = None
-        self._pool: ThreadPoolExecutor | None = None
+        with self._instance_lock:
+            if self._initialized:
+                return
+            self._max_workers = max_workers
+            self._clock = clock
+            self._sensors: dict[int, Sensor] = {}
+            self._due: dict[int, float] = {}
+            self._heap: list[tuple[float, int]] = []
+            self._inflight: set[int] = set()
+            self._lock = threading.RLock()
+            self._lifecycle_lock = threading.Lock()
+            self._wake = threading.Event()
+            self._stop = threading.Event()
+            self._thread: threading.Thread | None = None
+            self._pool: ThreadPoolExecutor | None = None
+            self._initialized = True
 
     @classmethod
     def instance(cls) -> "MonitorScheduler":
@@ -76,11 +78,12 @@ class MonitorScheduler:
         self._wake.set()
 
     def get_sensor(self, sensor_id: int) -> Sensor | None:
-        return self._sensors.get(sensor_id)
+        with self._lock:
+            return self._sensors.get(sensor_id)
 
     def run_now(self, sensor_id: int) -> CheckResult:
         """Run synchronously in the caller's thread (UI 'check now')."""
-        s = self._sensors.get(sensor_id)
+        s = self.get_sensor(sensor_id)
         if s is None:
             raise KeyError(sensor_id)
         return self._safe_run(s)
@@ -95,22 +98,27 @@ class MonitorScheduler:
         return self._thread is not None and self._thread.is_alive()
 
     def start(self) -> None:
-        if self.running:
-            return
-        self._stop.clear()
-        self._pool = ThreadPoolExecutor(max_workers=self._max_workers, thread_name_prefix="sensor")
-        self._thread = threading.Thread(target=self._loop, name="monitor-scheduler", daemon=True)
-        self._thread.start()
+        with self._lifecycle_lock:
+            with self._lock:
+                if self.running:
+                    return
+                self._stop.clear()
+                self._pool = ThreadPoolExecutor(max_workers=self._max_workers, thread_name_prefix="sensor")
+                self._thread = threading.Thread(target=self._loop, name="monitor-scheduler", daemon=True)
+                self._thread.start()
 
     def stop(self, wait: bool = True) -> None:
-        self._stop.set()
-        self._wake.set()
-        if self._thread is not None:
-            self._thread.join(timeout=5)
+        with self._lifecycle_lock:
+            with self._lock:
+                self._stop.set()
+                self._wake.set()
+                thread, pool = self._thread, self._pool
+                self._pool = None
+            if thread is not None and thread is not threading.current_thread():
+                thread.join()
+            if pool is not None:
+                pool.shutdown(wait=wait, cancel_futures=True)
             self._thread = None
-        if self._pool is not None:
-            self._pool.shutdown(wait=wait, cancel_futures=True)
-            self._pool = None
 
     def stats(self) -> dict[str, Any]:
         return {"running": self.running, "sensor_count": len(self._sensors),
@@ -142,19 +150,34 @@ class MonitorScheduler:
                     self._inflight.add(sid)
                     due.append(s)
             nxt = self._heap[0][0] - now if self._heap else 1.0
-        for s in due:
-            if self._pool is None:  # not started: run inline (used by tests)
+            for s in due:
+                if self._stop.is_set():
+                    self._inflight.discard(s.id)
+                elif self._pool is not None:
+                    try:
+                        future = self._pool.submit(self._run_and_release, s)
+                        future.add_done_callback(lambda f, sid=s.id: self._release(sid) if f.cancelled() else None)
+                    except RuntimeError:
+                        self._inflight.discard(s.id)
+                        raise
+            inline = self._pool is None and not self._stop.is_set()
+        if inline:
+            for s in due:
                 self._run_and_release(s)
-            else:
-                self._pool.submit(self._run_and_release, s)
         return max(0.0, min(nxt, 1.0))
 
     def _run_and_release(self, s: Sensor) -> CheckResult:
         try:
+            with self._lock:
+                if self._sensors.get(s.id) is not s or self._stop.is_set():
+                    return CheckResult(Status.UNKNOWN, None, "Sensor removed or scheduler stopped")
             return self._safe_run(s)
         finally:
-            with self._lock:
-                self._inflight.discard(s.id)
+            self._release(s.id)
+
+    def _release(self, sensor_id: int) -> None:
+        with self._lock:
+            self._inflight.discard(sensor_id)
 
     @staticmethod
     def _safe_run(sensor: Sensor) -> CheckResult:
