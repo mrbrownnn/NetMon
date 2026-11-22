@@ -7,6 +7,14 @@ from dotenv import load_dotenv
 from sqlalchemy.engine import make_url
 
 
+def normalize_db_url(url: str) -> str:
+    """Railway/Heroku give postgres:// or postgresql://; route both to the installed psycopg 3 driver."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 def sqlite_parent(url: str) -> None:
     parsed = make_url(url)
     if parsed.get_backend_name() == "sqlite" and parsed.database not in (None, "", ":memory:"):
@@ -29,7 +37,7 @@ class Settings:
         self.SECRET_KEY = os.environ["SECRET_KEY"]
         self.FERNET_KEY = os.environ["FERNET_KEY"]
         Fernet(self.FERNET_KEY.encode())
-        self.DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///netmon.db")
+        self.DATABASE_URL = normalize_db_url(os.getenv("DATABASE_URL", "sqlite:///netmon.db"))
         self.ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
         self.ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
         sqlite_parent(self.DATABASE_URL)

@@ -7,7 +7,7 @@ from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, JSO
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, scoped_session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from .config import sqlite_parent
+from .config import normalize_db_url, sqlite_parent
 
 
 class Base(DeclarativeBase):
@@ -154,8 +154,9 @@ class NotifierChannel(Base):
 
 class Database:
     def __init__(self, url: str):
+        url = normalize_db_url(url)
         sqlite_parent(url)
-        opts = {}
+        opts = {"pool_pre_ping": True}
         if url.startswith("sqlite"):
             opts["connect_args"] = {"check_same_thread": False, "timeout": 30}
             if url.endswith(":memory:") or url in ("sqlite://", "sqlite:///"):

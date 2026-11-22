@@ -17,14 +17,14 @@ from netmon.services.facade import NetMonService
 
 
 @pytest.fixture
-def svc(tmp_path, monkeypatch):
+def svc(tmp_path, monkeypatch, db_url):
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-at-least-32-characters")
     monkeypatch.setenv("ADMIN_USERNAME", "admin")
     monkeypatch.setenv("ADMIN_PASSWORD", "test-admin-password")
     monkeypatch.setenv("FERNET_KEY", Fernet.generate_key().decode())
     MonitorScheduler.reset_instance()
     events = []
-    service = NetMonService.create(f"sqlite:///{tmp_path / 'data.db'}", Fernet.generate_key(), lambda e, d: events.append((e, d)), False)
+    service = NetMonService.create(db_url(), Fernet.generate_key(), lambda e, d: events.append((e, d)), False)
     service.events = events
     yield service
     service.close()
@@ -250,12 +250,12 @@ def test_discovery_bounded_mock_scan(svc, monkeypatch):
     assert svc.discovery.status(job_id)["cancelled"]
 
 
-def test_restart_loads_saved_sensors(tmp_path, monkeypatch):
+def test_restart_loads_saved_sensors(tmp_path, monkeypatch, db_url):
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-at-least-32-characters")
     monkeypatch.setenv("FERNET_KEY", Fernet.generate_key().decode())
     MonitorScheduler.reset_instance()
     key = Fernet.generate_key()
-    url = f"sqlite:///{tmp_path / 'persist.db'}"
+    url = db_url("persist.db")
     first = NetMonService.create(url, key, lambda *args: None, False)
     device = create(first)
     first.monitor.pause_sensor(device["sensors"][0]["id"])

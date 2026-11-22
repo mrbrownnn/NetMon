@@ -265,9 +265,10 @@ with sync_playwright() as p:
     check("FR-43", "send test reports failure without secret", "TOKEN-SECRET-XYZ" not in json.dumps(tst["data"]), tst)
 
     # ---------- audit + settings ----------
-    logs = api(page, "GET", "/api/logs")["data"]["logs"]
-    acts = {l["action"] for l in logs}
-    check("FR-70", "audit has login/create/config entries", any("login" in a for a in acts) and len(logs) > 5, sorted(acts)[:15])
+    logs = api(page, "GET", "/api/logs")["data"]
+    acts = set(logs["actions"])
+    need = {"login", "login_failed", "device_create", "config_command", "config_undo", "alert_ack"}
+    check("FR-70", "audit records login/create/config/ack", need <= acts and logs["pagination"]["total"] > 20, sorted(need - acts))
     sset = api(page, "PUT", "/api/settings/monitoring", {"default_interval": 45, "down_after": 3, "history_days": 30, "backup_time": "02:00"})
     check("FR-71", "save monitoring settings", sset["status"] == 200, sset)
     me = api(page, "GET", "/api/auth/session")["data"]["user"]["id"]

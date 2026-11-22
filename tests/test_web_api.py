@@ -1,3 +1,4 @@
+import os
 import pytest
 from cryptography.fernet import Fernet
 
@@ -5,13 +6,13 @@ from netmon.web import create_app, socketio
 
 
 @pytest.fixture
-def app(tmp_path, monkeypatch):
+def app(tmp_path, monkeypatch, db_url):
     monkeypatch.setenv("ADMIN_USERNAME", "admin")
     monkeypatch.setenv("ADMIN_PASSWORD", "test-admin-password")
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-for-api-integration")
     monkeypatch.setenv("FERNET_KEY", Fernet.generate_key().decode())
     app = create_app({"TESTING": True, "SECRET_KEY": "test-secret-key", "FERNET_KEY": Fernet.generate_key().decode(),
-        "DATABASE_URL": "sqlite://", "START_SCHEDULER": False, "FRONTEND_DIST": str(tmp_path / "dist")})
+        "DATABASE_URL": db_url() if os.getenv("NETMON_TEST_DB") else "sqlite://", "START_SCHEDULER": False, "FRONTEND_DIST": str(tmp_path / "dist")})
     yield app
     app.extensions["netmon"].close()
 
