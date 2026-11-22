@@ -353,3 +353,19 @@ def test_unsupported_telnet_capability_fails_before_connect(driver, monkeypatch)
         conn.connect()
     assert exc.value.kind == "other"
     connect.assert_not_called()
+
+
+def test_notifier_failure_never_exposes_exception_secrets(caplog):
+    from netmon.domain.alerts import Alert, AlertLevel, TelegramNotifier, WebNotifier
+    secret = "REVIEW_SECRET_TOKEN"
+    notifier = TelegramNotifier(secret, "42")
+    sent = []
+    manager = AlertManager(notifiers=[notifier, WebNotifier(lambda *args: sent.append(args))])
+    with mock.patch("urllib.request.urlopen", side_effect=RuntimeError(
+            f"https://api.telegram.org/bot{secret}/sendMessage password=SMTP_SECRET")):
+        result = manager.dispatch(Alert(1, 1, AlertLevel.CRITICAL, "down", Status.DOWN))
+    assert result == {"telegram": "error: notification failed", "web": "ok"}
+    assert len(sent) == 1
+    assert secret not in caplog.text and "SMTP_SECRET" not in caplog.text
+    assert "RuntimeError" in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)

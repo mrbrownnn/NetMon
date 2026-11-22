@@ -212,8 +212,9 @@ class AlertManager:
                 n.send(alert)
                 results[n.name] = "ok"
             except Exception as exc:
-                log.exception("notifier %s failed", n.name)
-                results[n.name] = f"error: {exc}"
+                # Transport exceptions may contain credentials or token-bearing URLs.
+                log.error("notifier %s failed (%s)", n.name, type(exc).__name__)
+                results[n.name] = "error: notification failed"
         return results
 
     def _emit(self, event: str, alert: Alert) -> None:
