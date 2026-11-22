@@ -253,7 +253,7 @@ def test_dispatch_isolates_failing_notifier(mgr, caplog):
     mgr.notifiers = [Broken(), web, off, LogNotifier()]
     with caplog.at_level(logging.INFO):
         res = mgr.dispatch(Alert(1, 1, AlertLevel.CRITICAL, "m", Status.DOWN, "ping"))
-    assert res == {"broken": "error: smtp down", "web": "ok", "log": "ok"}
+    assert res == {"broken": "error: notification failed", "web": "ok", "log": "ok"}
     assert sent == ["alert_opened"] and "notifier broken failed" in caplog.text
 
 
