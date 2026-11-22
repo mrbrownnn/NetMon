@@ -6,7 +6,11 @@ TypeScript giúp kiểm tra kiểu dữ liệu API và sự kiện realtime khi 
 
 ## Trạng thái
 
-Đã tích hợp domain, service, REST API, Socket.IO và frontend React. Kiểm thử local (22/11/2026): 130 test Python pass, typecheck + build + 5 test frontend pass; đã chạy app thật bằng trình duyệt headless qua các luồng đăng nhập (sai/đúng), thêm thiết bị (IP sai bị chặn, IP đúng tạo sensor mặc định), dashboard realtime, chi tiết thiết bị, mọi trang menu, và quyền viewer (ẩn nút sửa, `DELETE` trả 403). Chưa kiểm thử với lab ảo thật (SSH/Telnet/SNMP tới VyOS/MikroTik) và chưa build Docker image (Docker daemon không chạy lúc kiểm thử).
+Đã tích hợp domain, service, REST API, Socket.IO và frontend React. Kiểm thử local (22/11/2026):
+- 131 test Python pass (coverage toàn bộ `netmon` 92%); typecheck, build và 5 test frontend pass.
+- `scripts/acceptance.py` lái app thật bằng trình duyệt headless: 43/43 kiểm tra pass, phủ TC-01→TC-16 (trừ phần cần lab). Thiết bị "chết/sống" được mô phỏng bằng một cổng TCP local; cấu hình từ xa chạy qua `FakeConnection`.
+- Docker image build được; container chạy Gunicorn ở chế độ production, dữ liệu giữ qua restart volume `/data`, scheduler tự chạy lại, xuất PDF tiếng Việt, từ chối khởi động khi khóa/mật khẩu yếu.
+- Chưa kiểm thử với lab ảo thật (SSH/Telnet/SNMP tới VyOS/MikroTik) và chưa gửi Telegram/email thật.
 
 Phạm vi Must/Should trong `NetMon – PRD & SRS.md` đã có mã và test tự động; phần cần lab thật vẫn chưa xác minh end-to-end: xác thực và phân quyền, kiểm kê và nhóm thiết bị, sensor và scheduler, cảnh báo và realtime, báo cáo, discovery, cấu hình từ xa, audit và thiết lập. Xem spec để biết mức ưu tiên từng chức năng; không suy diễn rằng mọi chức năng đã được hỗ trợ đầy đủ.
 
