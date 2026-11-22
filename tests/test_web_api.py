@@ -224,3 +224,18 @@ def test_dashboard_tree_devices_carry_sensors(client):
     tree = client.get("/api/dashboard").get_json()["tree"]
     device = tree[0]["devices"][0]
     assert [s["type"] for s in device["sensors"]] == ["ping", "http"]
+
+
+def test_logs_visible_to_viewer_with_all_actions(client, app):
+    login(client)
+    csrf = client.get("/api/auth/session").get_json()["csrf_token"]
+    client.post("/api/settings/users", json={"username": "v1", "role": "viewer", "password": "Viewer-Pass-123"}, headers={"X-CSRFToken": csrf})
+    for i in range(25):  # push the login entry off page 1
+        client.post("/api/settings/groups", json={"name": f"G{i}", "parent_id": None}, headers={"X-CSRFToken": csrf})
+    client.post("/api/auth/logout", headers={"X-CSRFToken": csrf})
+    login(client, "v1", "Viewer-Pass-123")
+    r = client.get("/api/logs")
+    assert r.status_code == 200
+    data = r.get_json()
+    assert "login" in data["actions"] and "group_create" in data["actions"]
+    assert all(set(u) == {"id", "username"} for u in data["users"])

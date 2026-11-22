@@ -668,12 +668,13 @@ def report_pdf():
 
 @api.get("/logs")
 @api.get("/audit")
-@admin
+@reader  # UI-DESIGN §7: Nhật ký is visible to every role
 def logs():
     result = service().audit.query(user_id=request.args.get("user_id") or None,
         action=request.args.get("action") or None, page=request.args.get("page", 1), **dates())
     result["items"] = [{**r, "created_at": r["ts"], "object": r["target"], "details": r["detail"]} for r in result["items"]]
-    return jsonify(**envelope(result, "logs"), users=service().auth.users(), actions=sorted({r["action"] for r in result["items"]}))
+    users = [{"id": u["id"], "username": u["username"]} for u in service().auth.users()]
+    return jsonify(**envelope(result, "logs"), users=users, actions=service().audit.actions())
 
 
 def job_shape(id, job):

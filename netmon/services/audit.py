@@ -26,6 +26,10 @@ class AuditService:
             s.flush()
             return row_dict(row)
 
+    def actions(self):
+        with self.db.session() as s:
+            return sorted(s.scalars(select(AuditLog.action).distinct()))
+
     def query(self, user_id=None, action=None, target=None, from_=None, to=None, page=1):
         with self.db.session() as s:
             q = select(AuditLog).order_by(AuditLog.ts.desc(), AuditLog.id.desc())
