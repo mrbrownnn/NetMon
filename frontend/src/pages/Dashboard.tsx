@@ -1,0 +1,23 @@
+import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../auth';
+import { Empty, LoadState, Panel, Status, number, roleName, timestamp, useLoad, type Alert, type Sensor } from './operations';
+
+type Device = { id: number; name: string; ip: string; status: string; sensors: Sensor[] };
+type TreeGroup = { id: number; name: string; status: string; children: TreeGroup[]; devices: Device[] };
+type DashboardData = { status_counts: Record<string, number>; open_alerts: Alert[]; top_latency: Sensor[]; tree: TreeGroup[] };
+function GroupTree({ group }: { group: TreeGroup }) {
+  return <li className="nm-tree-group"><details open={group.status === 'DOWN'}><summary className="nm-tree-row"><Status value={group.status} /><strong>{group.name}</strong></summary><ul className="nm-tree">{group.children.map(child => <GroupTree key={child.id} group={child} />)}{group.devices.map(device => <li key={device.id}><div className="nm-tree-row"><Status value={device.status} /><Link to={`/devices/${device.id}`}>{device.name}</Link><span className="ip">{device.ip}</span></div><div className="nm-tiles ps-4 pb-2">{device.sensors.map(sensor => <Link key={sensor.id} to={`/sensors/${sensor.id}`} className={`nm-tile st-${['UP', 'WARNING', 'DOWN', 'PAUSED', 'UNKNOWN'].includes(sensor.status) ? sensor.status.toLowerCase() : 'unknown'}`} title={`${sensor.name} · ${sensor.status} · ${timestamp(sensor.last_check)} · ${sensor.message ?? ''}`}><span className="nm-tile-name">{sensor.name} · {sensor.status}</span><span className="nm-tile-value">{number(sensor.last_value, sensor.unit ? ` ${sensor.unit}` : '')}</span></Link>)}</div></li>)}</ul></details></li>;
+}
+export default function Dashboard() {
+  const resource = useLoad<DashboardData>('/api/dashboard');
+  const { user } = useAuth();
+  const canAck = ['admin', 'operator'].includes(roleName(user?.role));
+  useEffect(() => { const update = () => resource.reload(); window.addEventListener('nm:status', update); return () => window.removeEventListener('nm:status', update); }, [resource.reload]);
+  const data = resource.data;
+  return <><div className="nm-page-head"><h1>Tổng quan</h1></div><LoadState resource={resource} />{data && <>
+    <Panel title="Trạng thái sensor"><div className="d-flex gap-2 flex-wrap">{['DOWN', 'WARNING', 'UP', 'PAUSED', 'UNKNOWN'].map(status => <Link key={status} to={`/sensors?status=${status}`} className="nm-panel mb-0 p-2" style={{ width: 120, minHeight: 64 }}><div style={{ fontSize: 24, color: 'var(--nm-text)' }}>{number(data.status_counts[status] ?? 0)}</div><Status value={status} /></Link>)}<Link to="/sensors" className="nm-panel mb-0 p-2" style={{ width: 120, minHeight: 64 }}><div style={{ fontSize: 24, color: 'var(--nm-text)' }}>{number(Object.values(data.status_counts).reduce((sum, count) => sum + count, 0))}</div>Tổng sensor</Link></div></Panel>
+    <div className="row g-3"><div className="col-7"><Panel title="Cảnh báo đang mở" actions={<Link to="/alerts?state=OPEN">Xem tất cả</Link>}><div className="table-responsive"><table className="nm-table"><thead><tr><th>Mức</th><th>Thời gian</th><th>Thiết bị · Sensor</th><th>Trạng thái</th>{canAck && <th>Thao tác</th>}</tr></thead><tbody>{data.open_alerts.slice(0, 10).map(alert => <tr key={alert.id}><td><Status value={alert.level} /></td><td>{timestamp(alert.created_at)}</td><td><Link to={`/devices/${alert.device_id}`}>{alert.device_name}</Link> · <Link to={`/sensors/${alert.sensor_id}`}>{alert.sensor_name}</Link></td><td><Status value={alert.new_status} /></td>{canAck && <td><Link to={`/alerts?state=OPEN&ack=${alert.id}`}>Xác nhận</Link></td>}</tr>)}{!data.open_alerts.length && <Empty columns={canAck ? 5 : 4} text="Không có cảnh báo đang mở." />}</tbody></table></div></Panel></div><div className="col-5"><Panel title="Độ trễ cao nhất"><table className="nm-table"><thead><tr><th>Thiết bị</th><th>Sensor</th><th>Độ trễ</th><th>Trạng thái</th></tr></thead><tbody>{data.top_latency.slice(0, 5).map(sensor => <tr key={sensor.id}><td><Link to={`/devices/${sensor.device_id}`}>{sensor.device_name ?? '–'}</Link></td><td><Link to={`/sensors/${sensor.id}`}>{sensor.name}</Link></td><td>{number(sensor.last_value, ' ms')}</td><td><Status value={sensor.status} /></td></tr>)}{!data.top_latency.length && <Empty columns={4} text="Chưa có kết quả độ trễ." />}</tbody></table></Panel></div></div>
+    <Panel title="Thiết bị theo nhóm" actions={<Link to="/devices">Mở danh sách thiết bị</Link>}>{data.tree.length ? <ul className="nm-tree">{data.tree.map(group => <GroupTree key={group.id} group={group} />)}</ul> : <div className="nm-empty">Chưa có thiết bị hoặc nhóm.</div>}</Panel>
+  </>}</>;
+}

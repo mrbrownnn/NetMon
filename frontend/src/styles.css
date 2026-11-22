@@ -1,0 +1,27 @@
+/* Keep existing dense NetMon tokens; adapt shell to React root and narrow screens. */
+body { min-width: 320px; }
+#root { display: flex; flex-direction: column; min-height: 100vh; }
+.nm-main { flex: 1; min-width: 0; }
+.nm-user { margin-left: auto; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.nm-user a { color: var(--nm-header-text); }
+.nm-user button { color: var(--nm-header-text); background: transparent; border: 1px solid var(--nm-border); border-radius: var(--nm-radius); }
+.nm-menu { overflow-x: auto; }
+.nm-menu a { white-space: nowrap; }
+.table-responsive { max-width: 100%; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--nm-focus); outline-offset: 2px; }
+@media (max-width: 900px) {
+  .nm-header { height: auto; min-height: 40px; flex-wrap: wrap; gap: 8px; padding: 8px 16px; }
+  .nm-search { margin-left: 0; width: min(280px, 60vw); }
+  .nm-summary { margin-left: 0; }
+  .nm-user { margin-left: 0; flex-wrap: wrap; }
+  .nm-main { padding: 12px 16px; }
+  .nm-footer { flex-wrap: wrap; height: auto; padding: 8px 16px; }
+}
+@media (max-width: 600px) {
+  .nm-form-row { flex-direction: column; gap: 4px; }
+  .nm-form-label { flex-basis: auto; text-align: left; }
+  .nm-form-field { width: 100%; max-width: none; }
+  .nm-form-actions { margin-left: 0; }
+  .nm-toolbar, .nm-page-head { flex-wrap: wrap; }
+}
+

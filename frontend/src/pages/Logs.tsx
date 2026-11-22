@@ -1,0 +1,9 @@
+import { Dates, Empty, LoadState, Pager, Panel, timestamp, useFilters, useLoad, type Pagination } from './operations';
+
+type LogData = { logs: { id: number; created_at: string; username: string; action: string; object: string; details: unknown }[]; users: { id: number; username: string }[]; actions: string[]; pagination: Pagination };
+export default function Logs() {
+  const { params, submit } = useFilters();
+  const resource = useLoad<LogData>(`/api/logs?${params}`);
+  const data = resource.data;
+  return <><div className="nm-page-head"><h1>Nhật ký</h1></div><Panel title="Nhật ký hệ thống"><form key={params.toString()} className="nm-toolbar flex-wrap" onSubmit={submit}><label>Người dùng <select name="user_id" className="form-select" defaultValue={params.get('user_id') ?? ''}><option value="">Tất cả</option>{data?.users.map(user => <option key={user.id} value={user.id}>{user.username}</option>)}</select></label><label>Hành động <select name="action" className="form-select" defaultValue={params.get('action') ?? ''}><option value="">Tất cả</option>{data?.actions.map(action => <option key={action}>{action}</option>)}</select></label><Dates params={params} /><button type="submit" className="btn btn-secondary">Lọc</button></form><LoadState resource={resource} />{data && <><div className="table-responsive"><table className="nm-table"><thead><tr><th>Thời gian</th><th>Người dùng</th><th>Hành động</th><th>Đối tượng</th><th>Chi tiết</th></tr></thead><tbody>{data.logs.map(log => <tr key={log.id}><td>{timestamp(log.created_at)}</td><td>{log.username || 'Hệ thống'}</td><td>{log.action}</td><td>{log.object || '–'}</td><td className="wrap">{typeof log.details === 'string' ? log.details : log.details == null ? '–' : JSON.stringify(log.details)}</td></tr>)}{!data.logs.length && <Empty columns={5} text="Không có nhật ký phù hợp bộ lọc." />}</tbody></table></div><Pager pagination={data.pagination} /></>}</Panel></>;
+}
