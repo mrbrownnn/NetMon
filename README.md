@@ -9,6 +9,7 @@ TypeScript giúp kiểm tra kiểu dữ liệu API và sự kiện realtime khi 
 Đã tích hợp domain, service, REST API, Socket.IO và frontend React. Kiểm thử local (22/11/2026):
 - 131 test Python pass (coverage toàn bộ `netmon` 92%); typecheck, build và 5 test frontend pass.
 - `scripts/acceptance.py` lái app thật bằng trình duyệt headless: 43/43 kiểm tra pass, phủ TC-01→TC-16 (trừ phần cần lab). Thiết bị "chết/sống" được mô phỏng bằng một cổng TCP local; cấu hình từ xa chạy qua `FakeConnection`.
+- Test service + web chạy được trên cả SQLite và PostgreSQL 16 (`NETMON_TEST_DB=postgresql://...`); nghiệm thu bằng trình duyệt pass trên Postgres.
 - Docker image build được; container chạy Gunicorn ở chế độ production, dữ liệu giữ qua restart volume `/data`, scheduler tự chạy lại, xuất PDF tiếng Việt, từ chối khởi động khi khóa/mật khẩu yếu.
 - Chưa kiểm thử với lab ảo thật (SSH/Telnet/SNMP tới VyOS/MikroTik) và chưa gửi Telegram/email thật.
 
@@ -101,7 +102,7 @@ Xem quy trình đầy đủ trong [DEPLOY.md](DEPLOY.md).
 
 - Một service build frontend bằng Node và chạy backend Python, phục vụ assets đã build.
 - **Chỉ 1 replica, 1 Gunicorn worker**; scheduler nằm trong process, nhiều worker/replica sẽ tạo lượt check trùng. Socket.IO dùng threading.
-- Gắn volume tại **`/data`**, đặt `DATABASE_URL=sqlite:////data/netmon.db`. Không có volume, DB có thể mất khi container bị thay.
+- DB: service Postgres của Railway, `DATABASE_URL=${{Postgres.DATABASE_URL}}` (hoặc SQLite trên volume `/data`).
 - Khai báo `SECRET_KEY`, `FERNET_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` riêng và ổn định. Sao lưu DB cùng khóa Fernet qua kênh bảo mật riêng.
 - `/healthz` chỉ kiểm tra HTTP server, không xác minh sensor hay kết nối lab.
 - Railway không tự truy cập được mạng riêng trên laptop, ví dụ `192.168.100.0/24`. Chạy local cùng mạng lab hoặc thiết lập mạng riêng/VPN phù hợp. Không mở SSH/Telnet lab ra Internet chỉ để demo.
