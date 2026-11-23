@@ -4,7 +4,7 @@
 
 TypeScript giúp kiểm tra kiểu dữ liệu API và sự kiện realtime khi phát triển; React tổ chức trạng thái, form và màn hình bằng component; Vite hỗ trợ dev server và build assets. Kiểm tra kiểu không thay thế kiểm thử tích hợp hoặc xác thực dữ liệu phía server.
 
-Sơ đồ kiến trúc: [ARCHITECTURE.md](ARCHITECTURE.md).
+Sơ đồ kiến trúc: [ARCHITECTURE.md](ARCHITECTURE.md). Bộ sơ đồ phân tích & thiết kế (use case, phân rã chức năng, block, lớp, ERD, DFD, sequence, state, activity, deployment): [docs/diagrams.md](docs/diagrams.md).
 
 ## Trạng thái
 
