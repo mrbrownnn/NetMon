@@ -10,6 +10,7 @@ TypeScript giúp kiểm tra kiểu dữ liệu API và sự kiện realtime khi 
 - 131 test Python pass (coverage toàn bộ `netmon` 92%); typecheck, build và 5 test frontend pass.
 - `scripts/acceptance.py` lái app thật bằng trình duyệt headless: 43/43 kiểm tra pass, phủ TC-01→TC-16 (trừ phần cần lab). Thiết bị "chết/sống" được mô phỏng bằng một cổng TCP local; cấu hình từ xa chạy qua `FakeConnection`.
 - Test service + web chạy được trên cả SQLite và PostgreSQL 16 (`NETMON_TEST_DB=postgresql://...`); nghiệm thu bằng trình duyệt pass trên Postgres.
+- Toàn bộ pytest chạy trong container Linux build từ `Dockerfile` (134 test SQLite, 36 test service+web trên Postgres 16); nghiệm thu trình duyệt 43/43 trên stack `docker compose` (Gunicorn production + Postgres).
 - Docker image build được; container chạy Gunicorn ở chế độ production, dữ liệu giữ qua restart volume `/data`, scheduler tự chạy lại, xuất PDF tiếng Việt, từ chối khởi động khi khóa/mật khẩu yếu.
 - Chưa kiểm thử với lab ảo thật (SSH/Telnet/SNMP tới VyOS/MikroTik) và chưa gửi Telegram/email thật.
 
@@ -95,6 +96,15 @@ Test mock và fake không chứng minh mạng lab hoặc thiết bị thật ho�
 - Telnet chỉ dùng được khi bản Netmiko đang cài hỗ trợ driver Telnet tương ứng; driver không hỗ trợ sẽ báo lỗi. Không mặc định mọi hãng đều dùng được Telnet. Ưu tiên SSH vì Telnet không mã hóa thông tin đăng nhập.
 - Một số parser interface hiện suy ra trạng thái từ cấu hình quản trị (`shutdown`), không phải trạng thái link vận hành. Cần đối chiếu đầu ra lệnh operational trên thiết bị thật trước khi dùng dữ liệu này để kết luận cáp/link đang UP.
 - Chỉ quét, giám sát và cấu hình thiết bị trong lab/mạng đã được cho phép. Không sử dụng ứng dụng để dò quét hay thay đổi hệ thống ngoài phạm vi ủy quyền.
+
+## Chạy bằng Docker (giống Railway)
+
+```powershell
+Copy-Item .env.example .env   # điền SECRET_KEY, FERNET_KEY, ADMIN_PASSWORD
+docker compose up --build     # http://localhost:8080
+```
+
+Đặt `NETMON_DEMO=1` trong `.env` để nạp dữ liệu demo một lần khi DB trống: 8 thiết bị với IP lab tự đặt (`192.168.100.x`), sensor đo thật tới host công cộng, lịch sử 7 ngày và cảnh báo cũ là dữ liệu sinh tự động. Trước khi go-live: tắt `NETMON_DEMO` và xóa thiết bị demo.
 
 ## Triển khai Railway
 

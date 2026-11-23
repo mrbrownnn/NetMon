@@ -6,7 +6,7 @@ Railway không tự truy cập được mạng lab riêng trên laptop (ví dụ
 
 ## Cấu hình Railway (đang chạy)
 
-Project có 2 service: **NetMon** (build `Dockerfile`) và **Postgres** (template Railway, có volume riêng).
+Cấu hình service nằm trong `.railway/railway.ts` (Railway IaC; xem trước bằng `railway config plan`, áp dụng bằng `railway config apply`). Project có 2 service: **NetMon** (build `Dockerfile`) và **Postgres** (template Railway, có volume riêng).
 
 1. Biến của NetMon:
    - `DATABASE_URL=${{Postgres.DATABASE_URL}}`: tham chiếu sang Postgres qua mạng nội bộ `railway.internal`. App tự đổi `postgres://`/`postgresql://` sang driver psycopg 3.
@@ -16,6 +16,8 @@ Project có 2 service: **NetMon** (build `Dockerfile`) và **Postgres** (templat
    Thiếu hoặc yếu một trong các biến trên thì app từ chối khởi động (log ghi rõ biến nào).
 2. Chỉ chạy **1 replica, 1 Gunicorn worker**. Scheduler nằm trong process; tăng số worker sẽ nhân đôi lượt check.
 3. Healthcheck `/healthz` chỉ xác nhận HTTP server hoạt động, không chứng minh lab có thể kết nối.
+
+`NETMON_DEMO=1` (đang bật): nạp dữ liệu demo một lần khi chưa có thiết bị. Trước go-live: xóa biến này và xóa 8 thiết bị demo.
 
 Dùng SQLite thay Postgres vẫn được: gắn volume vào `/data` và đặt `DATABASE_URL=sqlite:////data/netmon.db`.
 
