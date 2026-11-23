@@ -2,14 +2,17 @@
 
 Needs: pip install playwright && python -m playwright install chromium
 Start server with ADMIN_USERNAME=smokeadmin ADMIN_PASSWORD=Sm0ke-Test-Pass-91 and a fresh DATABASE_URL, then:
-    python -X utf8 scripts/acceptance.py http://127.0.0.1:5000 <screenshot_dir> 47811
+    python -X utf8 scripts/acceptance.py http://127.0.0.1:5000 <screenshot_dir> 47811 [listener_host] [admin_user] [admin_pw]
+listener_host: how the *app* reaches this machine's fake device ports (default 127.0.0.1;
+use host.docker.internal when the app runs in Docker).
 Browser drives the UI; same-origin fetch (same session + CSRF) covers API checks. A local TCP listener
 stands in for a lab device we can kill and revive (TC-07..TC-11)."""
 import json, socket, sys, threading, time
 from playwright.sync_api import sync_playwright
 
 BASE, OUT, PORT = sys.argv[1], sys.argv[2], int(sys.argv[3])
-ADMIN = ("smokeadmin", "Sm0ke-Test-Pass-91")
+HOST = sys.argv[4] if len(sys.argv) > 4 else "127.0.0.1"
+ADMIN = (sys.argv[5], sys.argv[6]) if len(sys.argv) > 6 else ("smokeadmin", "Sm0ke-Test-Pass-91")
 results, errors = [], []
 
 
@@ -18,7 +21,7 @@ class Listener:  # fake "router" service: TCP port we can open/close
         self.port, self.sock = port, None
     def up(self):
         self.sock = socket.socket(); self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind(("127.0.0.1", self.port)); self.sock.listen(16)
+        self.sock.bind(("0.0.0.0" if HOST != "127.0.0.1" else "127.0.0.1", self.port)); self.sock.listen(16)
         threading.Thread(target=self._accept, daemon=True).start()
     def _accept(self):
         s = self.sock
@@ -125,7 +128,7 @@ with sync_playwright() as p:
 
     # port sensor on R1 -> our listener, down_after 3, interval 10
     ps = api(page, "POST", "/api/sensors", {"device_id": r1_id, "type": "port", "name": "Port lab", "interval": 10,
-        "timeout": 1, "down_after": 3, "params": {"port": PORT}})
+        "timeout": 1, "down_after": 3, "target": HOST, "params": {"port": PORT}})
     check("FR-30", "add port sensor", ps["status"] == 201, ps)
     ps_id = ps["data"]["id"]
     check("FR-32", "listener open -> UP", wait_status(page, ps_id, "UP", 20))
@@ -175,9 +178,9 @@ with sync_playwright() as p:
     class H(http.server.BaseHTTPRequestHandler):
         def do_GET(self): self.send_response(500); self.end_headers()
         def log_message(self, *a): pass
-    hs = http.server.HTTPServer(("127.0.0.1", PORT + 1), H); threading.Thread(target=hs.serve_forever, daemon=True).start()
+    hs = http.server.HTTPServer(("0.0.0.0" if HOST != "127.0.0.1" else "127.0.0.1", PORT + 1), H); threading.Thread(target=hs.serve_forever, daemon=True).start()
     hsens = api(page, "POST", "/api/sensors", {"device_id": r1_id, "type": "http", "name": "HTTP500", "interval": 10, "timeout": 2,
-        "down_after": 1, "params": {"url": f"http://127.0.0.1:{PORT+1}/"}})
+        "down_after": 1, "target": f"http://{HOST}:{PORT+1}/", "params": {}})
     check("TC-10", "HTTP 500 -> DOWN", hsens["status"] == 201 and wait_status(page, hsens["data"]["id"], "DOWN", 20), hsens)
     hs.shutdown()
 

@@ -1,0 +1,36 @@
+# Local stack mirroring Railway: same Dockerfile, production mode, Postgres.
+#   docker compose up --build        -> http://localhost:8080
+# Secrets come from .env (see .env.example); compose refuses to start if they are missing.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: netmon
+      POSTGRES_USER: netmon
+      POSTGRES_PASSWORD: netmon-local
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "netmon", "-d", "netmon"]
+      interval: 2s
+      retries: 30
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      NETMON_ENV: production
+      DATABASE_URL: postgresql://netmon:netmon-local@db:5432/netmon
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      FERNET_KEY: ${FERNET_KEY:?set FERNET_KEY in .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      NETMON_DEMO: ${NETMON_DEMO:-0}
+
+volumes:
+  pgdata:

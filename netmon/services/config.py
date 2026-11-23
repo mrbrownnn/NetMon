@@ -179,8 +179,16 @@ class ConfigService:
             require(s, m.Device, device_id)
             items = [row_dict(r) for r in s.scalars(select(m.ConfigChange).where(m.ConfigChange.device_id == device_id)
                 .order_by(m.ConfigChange.id.desc()))]
+            names = dict(s.execute(select(m.User.id, m.User.username)).all())
         latest = next((r["id"] for r in items if not r["undone"]), None)
-        return [{**r, "can_undo": r["id"] == latest} for r in items]
+        return [{**r, "can_undo": r["id"] == latest, "username": names.get(r["user_id"]), "description": self._describe(r)}
+                for r in items]
+
+    def _describe(self, row):
+        try:  # domain Command knows its Vietnamese label; driver choice doesn't affect the text
+            return self.commands[row["command_type"]](DriverFactory.create("vyos"), **row["params"]).describe()
+        except (KeyError, TypeError, ValueError):
+            return row["command_type"]
 
     def undo(self, change_id, actor=None):
         with self.db.session() as s:

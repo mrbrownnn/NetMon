@@ -77,6 +77,9 @@ def create_app(test_config=None):
     service = NetMonService.create(app.config["DATABASE_URL"], app.config["FERNET_KEY"],
         publish, start_scheduler=False)
     app.extensions["netmon"] = service
+    if os.getenv("NETMON_DEMO") == "1":  # ponytail: demo seed; unset before go-live
+        from netmon.demo import seed
+        seed(service)
     if app.config["START_SCHEDULER"]:
         service.monitor.start()
 

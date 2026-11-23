@@ -240,3 +240,21 @@ def test_logs_visible_to_viewer_with_all_actions(client, app):
     data = r.get_json()
     assert "login" in data["actions"] and "group_create" in data["actions"]
     assert all(set(u) == {"id", "username"} for u in data["users"])
+
+
+def test_reports_default_to_seven_days(client, app):
+    from datetime import datetime, timedelta
+    from netmon.infra import db as m
+    login(client)
+    csrf = client.get("/api/auth/session").get_json()["csrf_token"]
+    client.post("/api/settings/groups", json={"name": "G", "parent_id": None}, headers={"X-CSRFToken": csrf})
+    gid = client.get("/api/groups").get_json()["groups"][0]["id"]
+    dev = client.post("/api/devices", json={"name": "D", "ip": "127.0.0.7", "device_type": "pc", "group_id": gid}, headers={"X-CSRFToken": csrf}).get_json()
+    svc = app.extensions["netmon"]
+    sid = svc.inventory.get_device(dev["id"])["sensors"][0]["id"]
+    now = datetime.now()
+    with svc.db.session() as s:  # outage 3 days ago, outside the 24h default
+        for hours, status in [(-100, "UP"), (-72, "DOWN"), (-71, "UP")]:
+            s.add(m.CheckResult(sensor_id=sid, ts=now + timedelta(hours=hours), status=status, value=1, message=""))
+    row = client.get("/api/reports").get_json()["rows"][0]
+    assert row["down_count"] == 1 and row["down_seconds"] == 3600

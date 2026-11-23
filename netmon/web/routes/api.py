@@ -61,11 +61,11 @@ def filters():
     return {k: request.args[k] for k in ("q", "type", "status", "page") if request.args.get(k)} | ({"group": request.args["group_id"]} if request.args.get("group_id") else {})
 
 
-def dates():
+def dates(default="24h"):
     end = request.args.get("end") or request.args.get("to")
     start = request.args.get("start") or request.args.get("from")
     if not start:
-        hours = {"1h": 1, "6h": 6, "24h": 24, "7d": 168, "30d": 720}.get(request.args.get("range", "24h"), 24)
+        hours = {"1h": 1, "6h": 6, "24h": 24, "7d": 168, "30d": 720}.get(request.args.get("range") or default, 24)
         start = (datetime.now() - timedelta(hours=hours)).isoformat()
     return {"from_": start, "to": end}
 
@@ -447,7 +447,7 @@ def backup_shape(row):
 
 
 def change_shape(row):
-    return {**row, "executed_at": row["ts"], "commands": row["forward_cmds"], "description": row["command_type"]}
+    return {**row, "executed_at": row["ts"], "commands": row["forward_cmds"]}
 
 
 @api.get("/devices/<int:id>/config/credentials")
@@ -643,7 +643,7 @@ def user_password(id):
 @api.get("/reports")
 @reader
 def reports():
-    report = service().reports.group_report(group=request.args.get("group_id"), **dates())
+    report = service().reports.group_report(group=request.args.get("group_id"), **dates("7d"))
     names = {g["id"]: g["name"] for g in groups()}
     devices = {d["id"]: d for d in service().inventory.list_devices(paginated=False)}
     rows = [{**r, "device_name": r["name"], "group_name": names.get(devices[r["device_id"]]["group_id"], ""),
@@ -655,14 +655,14 @@ def reports():
 @api.get("/reports/export.csv")
 @reader
 def report_csv():
-    return Response(service().reports.export_csv(group=request.args.get("group_id"), **dates()),
+    return Response(service().reports.export_csv(group=request.args.get("group_id"), **dates("7d")),
         mimetype="text/csv", headers={"Content-Disposition": 'attachment; filename="netmon-report.csv"'})
 
 
 @api.get("/reports/export.pdf")
 @reader
 def report_pdf():
-    return Response(service().reports.export_pdf(group=request.args.get("group_id"), **dates()),
+    return Response(service().reports.export_pdf(group=request.args.get("group_id"), **dates("7d")),
         mimetype="application/pdf", headers={"Content-Disposition": 'attachment; filename="netmon-report.pdf"'})
 
 

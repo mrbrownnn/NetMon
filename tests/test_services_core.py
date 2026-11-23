@@ -347,3 +347,23 @@ def test_admin_cannot_lock_demote_delete_self(svc):
         with pytest.raises(ValidationError):
             operation()
     assert svc.auth.lock(other["id"], me)["is_locked"]
+
+
+def test_demo_seed_once(svc):
+    from netmon.demo import seed
+    assert seed(svc) is True and seed(svc) is False
+    devices = svc.inventory.list_devices(paginated=False)
+    assert len(devices) == 8 and len({d["ip"] for d in devices}) == 8
+    assert svc.alerts.list(state="RESOLVED")["total"] >= 6
+    core = next(d for d in devices if d["name"] == "CORE-R1")
+    assert len(svc.config.list_backups(core["id"])) >= 2
+    assert svc.reports.group_report()["down_count"] >= 1
+
+
+def test_config_history_shows_user_and_label(svc):
+    d = create(svc)
+    admin = svc.auth.users()[0]
+    svc.config.save_credentials(d["id"], {"protocol": "fake", "username": "u", "password": "p", "driver": "vyos"}, admin)
+    svc.config.execute(d["id"], "toggle_interface", {"iface": "eth1", "enable": False}, admin)
+    row = svc.config.history(d["id"])[0]
+    assert row["username"] == admin["username"] and row["description"] == "Tắt interface eth1"
