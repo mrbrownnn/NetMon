@@ -1,7 +1,7 @@
 """GNS3 integration: real HTTP client against a stub /v2 server, demo lab, service pairing, API roles."""
 import json
 import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 from cryptography.fernet import Fernet
@@ -18,10 +18,11 @@ class Stub(BaseHTTPRequestHandler):
         "/v2/version": {"version": "2.2.49", "local": True},
         "/v2/projects": [{"project_id": PID, "name": "Lab", "status": "opened", "path": "/x"}],
         f"/v2/projects/{PID}/nodes": [{"node_id": "a", "name": "R1", "node_type": "qemu", "status": "started",
-            "console_host": "127.0.0.1", "console": 5001, "console_type": "telnet", "x": 1, "y": 2, "ports": []}],
+            "console_host": "0.0.0.0", "console": 5001, "console_type": "telnet", "x": 1, "y": 2,
+            "ports": [{"adapter_number": 0, "port_number": 0, "name": "Ethernet0"}]}],
         f"/v2/projects/{PID}/links": [{"link_id": "l1", "nodes": [
-            {"node_id": "a", "adapter_number": 0, "port_number": 0, "label": {"text": "eth0"}},
-            {"node_id": "b", "adapter_number": 1, "port_number": 0}]}],
+            {"node_id": "a", "adapter_number": 0, "port_number": 0, "label": {"text": "0/0"}},
+            {"node_id": "b", "adapter_number": 1, "port_number": 0, "label": {"text": "1/0"}}]}],
     }
 
     def do_GET(self):
@@ -29,6 +30,7 @@ class Stub(BaseHTTPRequestHandler):
         self._send(200 if body is not None else 404, body or {"message": "nope"})
 
     def do_POST(self):
+        self.rfile.read(int(self.headers.get("Content-Length") or 0))  # drain body, else Windows may abort the socket
         CALLS.append(self.path)
         self._send(200 if self.path.endswith(("/start", "/stop", "/reload")) else 404, {})
 
@@ -43,7 +45,7 @@ class Stub(BaseHTTPRequestHandler):
 
 @pytest.fixture
 def server():
-    httpd = HTTPServer(("127.0.0.1", 0), Stub)
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), Stub)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     yield f"http://127.0.0.1:{httpd.server_port}"
     httpd.shutdown()
@@ -53,8 +55,10 @@ def test_http_client_reads_v2_api(server):
     c = Gns3Client.create(server)
     assert isinstance(c, HttpGns3) and c.version() == "2.2.49"
     assert c.projects() == [{"project_id": PID, "name": "Lab", "status": "opened"}]
-    assert c.nodes(PID)[0]["console"] == 5001 and "ports" not in c.nodes(PID)[0]
-    assert c.links(PID)[0]["nodes"][0]["label"] == "eth0" and c.links(PID)[0]["nodes"][1]["label"] == ""
+    node = c.nodes(PID)[0]
+    assert node["console"] == 5001 and node["console_host"] == "127.0.0.1" and "ports" not in node
+    ends = c.links(PID)[0]["nodes"]
+    assert ends[0]["label"] == "Ethernet0" and ends[1]["label"] == "1/0"  # node port name, else GNS3 label
     c.node_action(PID, "a", "stop")
     assert CALLS[-1] == f"/v2/projects/{PID}/nodes/a/stop"
     with pytest.raises(Gns3Error, match="404"):

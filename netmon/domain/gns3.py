@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import urllib.error
+import urllib.parse
 import urllib.request
 from abc import ABC, abstractmethod
 
@@ -64,11 +65,23 @@ class HttpGns3(Gns3Client):
 
     def nodes(self, project_id):
         keys = ("node_id", "name", "node_type", "status", "console_host", "console", "console_type", "x", "y")
-        return [{k: n.get(k) for k in keys} for n in self._call("GET", f"/projects/{project_id}/nodes")]
+        host = urllib.parse.urlsplit(self.base).hostname
+        result = []
+        for n in self._call("GET", f"/projects/{project_id}/nodes"):
+            item = {k: n.get(k) for k in keys}
+            if item["console_host"] in ("0.0.0.0", "::", None):  # bind-all address: console is on the server host
+                item["console_host"] = host
+            result.append(item)
+        return result
 
     def links(self, project_id):
+        # Port names (e.g. "Ethernet0") come from the nodes; link labels are only "adapter/port" text.
+        names = {(n["node_id"], p["adapter_number"], p["port_number"]): p["name"]
+                 for n in self._call("GET", f"/projects/{project_id}/nodes") for p in n.get("ports") or []}
         return [{"link_id": link["link_id"], "nodes": [{"node_id": e["node_id"], "adapter_number": e.get("adapter_number"),
-                 "port_number": e.get("port_number"), "label": (e.get("label") or {}).get("text", "")} for e in link["nodes"]]}
+                 "port_number": e.get("port_number"),
+                 "label": names.get((e["node_id"], e.get("adapter_number"), e.get("port_number")))
+                          or (e.get("label") or {}).get("text", "")} for e in link["nodes"]]}
                 for link in self._call("GET", f"/projects/{project_id}/links")]
 
     def node_action(self, project_id, node_id, action):
