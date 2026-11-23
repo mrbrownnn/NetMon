@@ -18,6 +18,7 @@ import Logs from './pages/Logs';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import ChangePassword from './pages/ChangePassword';
+import Gns3 from './pages/Gns3';
 
 const menu: { path: string; label: string; role: Role }[] = [
   { path: '/', label: 'Trang chủ', role: 'viewer' },
@@ -25,6 +26,7 @@ const menu: { path: string; label: string; role: Role }[] = [
   { path: '/sensors', label: 'Sensor', role: 'viewer' },
   { path: '/alerts', label: 'Cảnh báo', role: 'viewer' },
   { path: '/discovery', label: 'Quét mạng', role: 'admin' },
+  { path: '/gns3', label: 'GNS3', role: 'viewer' },
   { path: '/reports', label: 'Báo cáo', role: 'viewer' },
   { path: '/logs', label: 'Nhật ký', role: 'viewer' },
   { path: '/settings', label: 'Cài đặt', role: 'admin' },
@@ -145,6 +147,7 @@ function Shell() {
         <Route path="/sensors/:id" element={<SensorDetail />} />
         <Route path="/alerts" element={<Alerts />} />
         <Route path="/discovery" element={<RequireRole role="admin"><Discovery /></RequireRole>} />
+        <Route path="/gns3" element={<Gns3 />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/logs" element={<Logs />} />
         <Route path="/settings" element={<RequireRole role="admin"><Settings /></RequireRole>} />

@@ -20,6 +20,7 @@ def create_app(test_config=None):
     from netmon.infra.config import Settings
     from netmon.infra.db import User
     from netmon.services.facade import NetMonService
+    from netmon.domain.gns3 import Gns3Error
     from netmon.services.errors import AuthError, ValidationError
     settings = Settings()
     app = Flask(__name__, static_folder=None)
@@ -113,6 +114,10 @@ def create_app(test_config=None):
         # Domain/service messages are user-facing text without secrets.
         message = str(error) or "Invalid request"
         return jsonify(error=message, message=message, errors={"request": message}), 400
+
+    @app.errorhandler(Gns3Error)
+    def gns3_error(error):
+        return jsonify(error=str(error), message=str(error)), 502
 
     @app.errorhandler(HTTPException)
     def http_error(error):

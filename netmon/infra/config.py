@@ -40,4 +40,6 @@ class Settings:
         self.DATABASE_URL = normalize_db_url(os.getenv("DATABASE_URL", "sqlite:///netmon.db"))
         self.ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
         self.ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+        # GNS3 2.2 server URL (e.g. http://127.0.0.1:3080) or "demo" for the built-in fake lab; empty = disabled.
+        self.GNS3_URL = os.getenv("GNS3_URL", "").strip()
         sqlite_parent(self.DATABASE_URL)

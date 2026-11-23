@@ -31,6 +31,7 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
       NETMON_DEMO: ${NETMON_DEMO:-0}
+      GNS3_URL: ${GNS3_URL:-}
 
 volumes:
   pgdata:

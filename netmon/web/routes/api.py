@@ -737,3 +737,23 @@ def devices_import():
         abort(400, "CSV file required")
     return jsonify(service().inventory.import_csv(upload.read(), g.user))
 
+
+
+@api.get("/gns3")
+@reader
+def gns3_status():
+    status = service().gns3.status()
+    status["projects"] = service().gns3.projects() if status["configured"] and not status["error"] else []
+    return jsonify(status)
+
+
+@api.get("/gns3/projects/<project_id>")
+@reader
+def gns3_project(project_id):
+    return jsonify(service().gns3.project(project_id))
+
+
+@api.post("/gns3/projects/<project_id>/nodes/<node_id>/<action>")
+@admin
+def gns3_node_action(project_id, node_id, action):
+    return jsonify(service().gns3.node_action(project_id, node_id, action, g.user))

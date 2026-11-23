@@ -63,6 +63,7 @@ a { color: var(--nm-link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 .num, td, .nm-value { font-variant-numeric: tabular-nums; }
 .mono, .ip, .mac { font-family: var(--nm-mono); font-size: 12px; }
+code { color: var(--nm-text); }  /* only status uses colour */
 .muted, .text-muted { color: var(--nm-text-muted) !important; }
 .empty-val { color: var(--nm-text-muted); }
 .bi { font-size: 14px; }

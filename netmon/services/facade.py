@@ -10,6 +10,7 @@ from .auth import AuthService
 from .config import ConfigService
 from .discovery import DiscoveryService
 from .errors import AuthError, ValidationError
+from .gns3 import Gns3Service
 from .inventory import InventoryService
 from .monitor import MonitorService
 from .reports import ReportService
@@ -39,6 +40,7 @@ class NetMonService:
         service.monitor.config = service.config
         service.reports = ReportService(service.db, service.inventory)
         service.discovery = DiscoveryService(service.inventory, service.audit)
+        service.gns3 = Gns3Service(environment.GNS3_URL, service.inventory, service.audit)
         service.auth.seed_admin(environment.ADMIN_USERNAME, environment.ADMIN_PASSWORD)
         if start_scheduler:
             service.monitor.start()
