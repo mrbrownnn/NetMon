@@ -17,6 +17,8 @@ Cấu hình service nằm trong `.railway/railway.ts` (Railway IaC; xem trước
 2. Chỉ chạy **1 replica, 1 Gunicorn worker**. Scheduler nằm trong process; tăng số worker sẽ nhân đôi lượt check.
 3. Healthcheck `/healthz` chỉ xác nhận HTTP server hoạt động, không chứng minh lab có thể kết nối.
 
+`GNS3_URL=demo` (đang bật): trang GNS3 dùng lab giả lập. Trước go-live: xóa biến (Railway không vào được GNS3 thật trên laptop).
+
 `NETMON_DEMO=1` (đang bật): nạp dữ liệu demo một lần khi chưa có thiết bị. Trước go-live: xóa biến này và xóa 8 thiết bị demo.
 
 Dùng SQLite thay Postgres vẫn được: gắn volume vào `/data` và đặt `DATABASE_URL=sqlite:////data/netmon.db`.

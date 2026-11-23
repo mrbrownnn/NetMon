@@ -106,6 +106,15 @@ docker compose up --build     # http://localhost:8080
 
 Đặt `NETMON_DEMO=1` trong `.env` để nạp dữ liệu demo một lần khi DB trống: 8 thiết bị với IP lab tự đặt (`192.168.100.x`), sensor đo thật tới host công cộng, lịch sử 7 ngày và cảnh báo cũ là dữ liệu sinh tự động. Trước khi go-live: tắt `NETMON_DEMO` và xóa thiết bị demo.
 
+## Kết nối GNS3
+
+Trang **GNS3** (menu chính) đọc GNS3 server **2.2** qua REST API `/v2`: danh sách project, node (loại, trạng thái, cổng console), link giữa các node. Admin bật/tắt/khởi động lại node (có hộp xác nhận, ghi audit log). Viewer/Operator chỉ xem.
+
+- Cấu hình: biến `GNS3_URL`, ví dụ `http://127.0.0.1:3080`. Trống = tắt tính năng. GNS3 3.x (API `/v3`, cần token) chưa hỗ trợ.
+- Xem cấu hình node: node được ghép với thiết bị NetMon **cùng tên**. Tạo thiết bị có IP quản lý + thông tin SSH của node, rồi bấm tên thiết bị trên trang GNS3 để mở tab Cấu hình (running-config, interface, routing qua SSH).
+- Chỉ dùng được khi NetMon chạy cùng máy/mạng với GNS3 (chạy local). Railway không vào được GNS3 trên laptop.
+- `GNS3_URL=demo`: lab giả lập 6 node, 6 link trong bộ nhớ, tên khớp dữ liệu demo. Đang bật trên Railway để trình diễn; bật/tắt node chỉ đổi trạng thái giả lập.
+
 ## Triển khai Railway
 
 Xem quy trình đầy đủ trong [DEPLOY.md](DEPLOY.md).
